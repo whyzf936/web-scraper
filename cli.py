@@ -1,14 +1,17 @@
 """通用网页爬虫命令行工具。
 
 用法示例：
-    # 解析 HTML
-    python cli.py https://example.com                 # 提取基本信息
-    python cli.py https://example.com --links         # 提取所有链接
-    python cli.py https://example.com --selector "h2" # 自定义 CSS 选择器
+    # 解析 HTML（默认，不用写子命令）
+    python cli.py https://example.com              # 基本信息
+    python cli.py https://example.com -l           # 所有链接
+    python cli.py https://example.com -i           # 所有图片
+    python cli.py https://example.com -t           # 正文文本
+    python cli.py https://example.com -s "h2"      # CSS 选择器
+    python cli.py https://example.com -o r.json    # 导出 JSON
 
     # 调用 JSON API
-    python cli.py api "https://api.xxx.com/user?id=1" --field "data.name"
-    python cli.py api "https://api.xxx.com/user?id=1" # 打印整个 JSON
+    python cli.py api "https://api.xxx.com/u?id=1" -f "data.name"
+    python cli.py api "https://api.xxx.com/u?id=1"           # 打印整个 JSON
 """
 from __future__ import annotations
 
@@ -88,38 +91,44 @@ def cmd_api(args: argparse.Namespace) -> None:
         else:
             print(value)
     else:
-        # 没指定字段，打印整个 JSON
         print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """构建命令行参数解析器。"""
+def build_scrape_parser() -> argparse.ArgumentParser:
+    """解析 HTML 的参数解析器。"""
     parser = argparse.ArgumentParser(
         prog="scrape",
-        description="通用爬虫：解析 HTML 或调用 JSON API 抓取数据",
+        description="通用网页爬虫：解析 HTML 或调用 JSON API",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("url", help="要抓取的网页地址")
+    parser.add_argument("-l", "--links", action="store_true", help="提取所有链接")
+    parser.add_argument("-i", "--images", action="store_true", help="提取所有图片")
+    parser.add_argument("-t", "--text", action="store_true", help="提取正文文本")
+    parser.add_argument("-s", "--selector", help="CSS 选择器，如 h2.title")
+    parser.add_argument("-o", "--output", help="结果导出为 JSON 文件")
+    return parser
 
-    p_scrape = sub.add_parser("scrape", help="解析 HTML 网页")
-    p_scrape.add_argument("url", help="要抓取的网页地址")
-    p_scrape.add_argument("--links", action="store_true", help="提取所有链接")
-    p_scrape.add_argument("--images", action="store_true", help="提取所有图片")
-    p_scrape.add_argument("--text", action="store_true", help="提取正文文本")
-    p_scrape.add_argument("--selector", help="自定义 CSS 选择器，如 h2.title")
-    p_scrape.add_argument("-o", "--output", help="把结果导出为 JSON 文件")
-    p_scrape.set_defaults(func=cmd_scrape)
 
-    p_api = sub.add_parser("api", help="调用 JSON API")
-    p_api.add_argument("url", help="接口地址")
-    p_api.add_argument("--field", help="要提取的字段路径，如 data.card.name")
-    p_api.set_defaults(func=cmd_api)
-
+def build_api_parser() -> argparse.ArgumentParser:
+    """调用 JSON API 的参数解析器。"""
+    parser = argparse.ArgumentParser(
+        prog="api",
+        description="调用 JSON API 并提取字段",
+    )
+    parser.add_argument("url", help="接口地址")
+    parser.add_argument("-f", "--field", help="字段路径，如 data.card.name")
     return parser
 
 
 def main() -> None:
-    args = build_parser().parse_args()
-    args.func(args)
+    # 第一个参数是 api 时走 API 模式，否则默认走 HTML 解析模式
+    if len(sys.argv) > 1 and sys.argv[1] == "api":
+        sys.argv.pop(1)
+        args = build_api_parser().parse_args()
+        cmd_api(args)
+    else:
+        args = build_scrape_parser().parse_args()
+        cmd_scrape(args)
 
 
 if __name__ == "__main__":

@@ -20,26 +20,26 @@
 
 ## 快速开始
 
-### 方式一：解析 HTML（静态网站）
+### 方式一：解析 HTML（静态网站，默认）
 
 ```bash
 # 提取基本信息（标题、描述、链接/图片数量）
-python cli.py scrape https://example.com
+python cli.py https://example.com
 
-# 提取所有链接
-python cli.py scrape https://example.com --links
+# 提取所有链接（-l）
+python cli.py https://example.com -l
 
-# 提取所有图片
-python cli.py scrape https://example.com --images
+# 提取所有图片（-i）
+python cli.py https://example.com -i
 
-# 提取正文文本
-python cli.py scrape https://example.com --text
+# 提取正文文本（-t）
+python cli.py https://example.com -t
 
-# 用 CSS 选择器自定义提取
-python cli.py scrape https://example.com --selector "h2.title"
+# 用 CSS 选择器自定义提取（-s）
+python cli.py https://example.com -s "h2.title"
 
-# 结果导出为 JSON
-python cli.py scrape https://example.com -o result.json
+# 结果导出为 JSON（-o）
+python cli.py https://example.com -o result.json
 ```
 
 ### 方式二：调用 JSON API（有接口的网站）
@@ -48,9 +48,20 @@ python cli.py scrape https://example.com -o result.json
 # 打印整个 JSON 返回
 python cli.py api "https://api.xxx.com/user?id=1"
 
-# 用点路径提取某个字段（如 data.card.name）
-python cli.py api "https://api.xxx.com/user?id=1" --field "data.card.name"
+# 用点路径提取某个字段（-f）
+python cli.py api "https://api.xxx.com/user?id=1" -f "data.card.name"
 ```
+
+## 参数速查
+
+| 短参数 | 长参数 | 作用 |
+|---|---|---|
+| `-l` | `--links` | 提取所有链接 |
+| `-i` | `--images` | 提取所有图片 |
+| `-t` | `--text` | 提取正文文本 |
+| `-s` | `--selector` | CSS 选择器自定义提取 |
+| `-o` | `--output` | 导出 JSON 文件 |
+| `-f` | `--field` | API 字段路径（点路径） |
 
 ## 运行测试
 
