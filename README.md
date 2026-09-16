@@ -8,8 +8,10 @@
 - 🔗 **链接提取**：自动把相对路径转成绝对地址
 - 🖼️ **图片提取**：提取所有图片地址和 alt 描述
 - 🎯 **CSS 选择器**：自定义提取任意元素（如 `h2.title`、`div.item p`）
+- 📡 **调用 JSON API**：直接请求接口，用点路径提取字段（如 `data.card.name`）
+- 🔁 **自动重试**：网络抖动时自动重试，提高稳定性
 - 💾 **导出 JSON**：结果可保存为结构化文件
-- 🧪 单元测试覆盖解析逻辑（不依赖真实网络）
+- 🧪 单元测试覆盖解析、选择器、字段提取逻辑
 
 ## 环境要求
 
@@ -18,24 +20,36 @@
 
 ## 快速开始
 
+### 方式一：解析 HTML（静态网站）
+
 ```bash
 # 提取基本信息（标题、描述、链接/图片数量）
-python cli.py https://example.com
+python cli.py scrape https://example.com
 
 # 提取所有链接
-python cli.py https://example.com --links
+python cli.py scrape https://example.com --links
 
 # 提取所有图片
-python cli.py https://example.com --images
+python cli.py scrape https://example.com --images
 
 # 提取正文文本
-python cli.py https://example.com --text
+python cli.py scrape https://example.com --text
 
 # 用 CSS 选择器自定义提取
-python cli.py https://example.com --selector "h2.title"
+python cli.py scrape https://example.com --selector "h2.title"
 
 # 结果导出为 JSON
-python cli.py https://example.com -o result.json
+python cli.py scrape https://example.com -o result.json
+```
+
+### 方式二：调用 JSON API（有接口的网站）
+
+```bash
+# 打印整个 JSON 返回
+python cli.py api "https://api.xxx.com/user?id=1"
+
+# 用点路径提取某个字段（如 data.card.name）
+python cli.py api "https://api.xxx.com/user?id=1" --field "data.card.name"
 ```
 
 ## 运行测试
@@ -56,8 +70,9 @@ web-scraper/
 
 ## 设计说明
 
-- **解析与网络分离**：`parse()` 是纯函数（不发起网络请求），输入 HTML 输出结构化数据，因此可以直接用本地 HTML 样本做单元测试，不必真的联网。
-- **通用性**：不写死任何网站结构，靠通用的 HTML 元素（title/meta/a/img）和 CSS 选择器工作。
+- **解析与网络分离**：`parse()` 和 `extract()` 是纯函数（不发起网络请求），可以直接用本地样本做单元测试，不必真的联网。
+- **两条路径**：静态网站走「解析 HTML」，有接口的网站走「调用 API」，对应爬虫的两大场景。
+- **自动重试**：`_request()` 对网络抖动做重试，提高稳定性。
 - **礼貌抓取**：设置 User-Agent 伪装成浏览器；实际使用时请控制抓取频率，遵守目标网站的 robots.txt 与服务条款。
 
 ## 免责声明

@@ -1,10 +1,12 @@
-"""通用网页爬虫核心模块：负责下载网页并解析出结构化信息。
+"""通用网页爬虫核心模块：支持解析 HTML 和调用 JSON API 两条路径。
 
-特点：不绑定任何特定网站，对任意 URL 都能提取标题、描述、正文、链接、图片，
-还支持用 CSS 选择器自定义提取。
+两条路径对应爬虫的两大场景：
+- 静态网站 → 解析 HTML（fetch + parse + select）
+- 有接口的网站 → 直接调 JSON API（fetch_json + extract）
 """
 from __future__ import annotations
 
+import time
 from urllib.parse import urljoin
 
 import requests
@@ -20,14 +22,59 @@ DEFAULT_HEADERS = {
 }
 
 
-def fetch(url: str, timeout: int = 10) -> str:
-    """下载网页，返回 HTML 文本；网络错误会抛出异常。"""
-    resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=timeout)
-    resp.raise_for_status()  # 状态码非 2xx 时抛异常
+def _request(url: str, timeout: int = 10,
+             retries: int = 3, delay: float = 1.0) -> requests.Response:
+    """发送 GET 请求，网络失败时自动重试。
+
+    重试机制解决"网络抖动"（如 SSL 偶发失败），失败几次后再抛出异常。
+    """
+    last_err = None
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=timeout)
+            resp.raise_for_status()  # 状态码非 2xx 时抛异常
+            return resp
+        except requests.RequestException as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(delay)  # 稍等再试，避免频繁请求
+    raise last_err
+
+
+def fetch(url: str, timeout: int = 10, retries: int = 3,
+          delay: float = 1.0) -> str:
+    """下载网页，返回 HTML 文本；网络错误最终会抛出异常。"""
+    resp = _request(url, timeout, retries, delay)
     # 有些网站不声明编码，用自动检测避免中文乱码
     if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
         resp.encoding = resp.apparent_encoding
     return resp.text
+
+
+def fetch_json(url: str, timeout: int = 10, retries: int = 3,
+               delay: float = 1.0):
+    """请求 JSON API，返回解析后的 dict / list。"""
+    resp = _request(url, timeout, retries, delay)
+    return resp.json()
+
+
+def extract(data, path: str):
+    """按「点路径」从嵌套结构里取字段，如 "data.card.name"。
+
+    支持 dict 的键名和 list 的数字下标。取不到时返回 None。
+    例：extract({"a": {"b": [10, 20]}}, "a.b.1") -> 20
+    """
+    for key in path.split("."):
+        if isinstance(data, dict):
+            data = data.get(key)
+        elif isinstance(data, list) and key.isdigit():
+            idx = int(key)
+            data = data[idx] if idx < len(data) else None
+        else:
+            return None
+        if data is None:
+            return None
+    return data
 
 
 def parse(html: str, base_url: str = "") -> dict:

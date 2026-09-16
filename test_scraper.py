@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import unittest
 
-from scraper import parse, select
+from scraper import parse, select, extract
 
 # 一段示例 HTML，用于测试解析逻辑
 SAMPLE_HTML = """
@@ -81,6 +81,27 @@ class TestSelect(unittest.TestCase):
     def test_select_no_match(self):
         results = select(SAMPLE_HTML, ".not-exist")
         self.assertEqual(results, [])
+
+
+class TestExtract(unittest.TestCase):
+    """测试点路径提取字段。"""
+
+    def test_simple_key(self):
+        data = {"name": "Alice", "age": 20}
+        self.assertEqual(extract(data, "name"), "Alice")
+        self.assertEqual(extract(data, "age"), 20)
+
+    def test_nested_dict(self):
+        data = {"data": {"card": {"name": "Bob"}}}
+        self.assertEqual(extract(data, "data.card.name"), "Bob")
+
+    def test_list_index(self):
+        data = {"items": [{"title": "a"}, {"title": "b"}]}
+        self.assertEqual(extract(data, "items.1.title"), "b")
+
+    def test_missing_returns_none(self):
+        data = {"a": 1}
+        self.assertIsNone(extract(data, "a.b.c"))
 
 
 if __name__ == "__main__":
